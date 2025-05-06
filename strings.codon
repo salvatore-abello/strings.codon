@@ -1,14 +1,11 @@
 import sys
 from C import mmap(int, int, int, int, int, int) -> cobj
-from C import fseek(int, int, int) -> int
-from C import ftell(int) -> int
 from C import fopen(cobj, cobj) -> int
 from C import fclose(int) -> int
 from C import perror(cobj) -> None
 from C import fileno(int) -> int
 from C import putchar(int) -> None
 from C import read(int, cobj, int) -> int
-from C import malloc(int) -> cobj
 
 DEFAULT_MIN_LEN = 4
 BUF_SIZE = 64 * 1024
