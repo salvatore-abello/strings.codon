@@ -1,0 +1,122 @@
+import sys
+from C import mmap(int, int, int, int, int, int) -> cobj
+from C import fseek(int, int, int) -> int
+from C import ftell(int) -> int
+from C import fopen(cobj, cobj) -> int
+from C import fclose(int) -> int
+from C import perror(cobj) -> None
+from C import fileno(int) -> int
+from C import putchar(int) -> None
+from C import read(int, cobj, int) -> int
+from C import malloc(int) -> cobj
+
+DEFAULT_MIN_LEN = 4
+BUF_SIZE = 64 * 1024
+
+
+def print_usage(prog):
+    msg = (
+        f"Usage: {prog} [OPTION]... [FILE]...\n"
+        "Print the printable character sequences in FILE(s).\n\n"
+        "  -n NUM    set minimum string length to NUM (default 4)\n"
+        "  -h, --help display this help and exit\n"
+    )
+    print(msg)
+
+
+def parse_args(argv):
+    min_len = DEFAULT_MIN_LEN
+    files = []
+    i = 1
+    argc = len(argv)
+    while i < argc:
+        arg = argv[i]
+        if arg == '-h' or arg == '--help':
+            print_usage(argv[0])
+            sys.exit(0)
+        elif arg.startswith('-n'):
+            if arg == '-n':
+                i += 1
+                if i >= argc:
+                    print_usage(argv[0])
+                    sys.exit(1)
+                min_len = int(argv[i])
+            else:
+                min_len = int(arg[2:])
+        elif arg.startswith('-'):
+            sys.stderr.write(f"Unknown option: {arg}\n")
+            print_usage(argv[0])
+            sys.exit(1)
+        else:
+            files.append(arg)
+        i += 1
+
+    if not files:
+        files = ["<stdin>"]
+    return min_len, files
+
+def process_file(path, min_len: int):
+    if path == "<stdin>":
+        buf = mmap(0, BUF_SIZE, 3, 34, -1, 0);
+        while True:
+            n_bytes = read(0, buf, BUF_SIZE)
+            if n_bytes <= 0:
+                break
+            run_start = 0
+            run_len = 0
+            for i in range(n_bytes):
+                c = int(buf[i])
+                if c == 0x09 or (c >= 0x20 and c <= 0x7E):
+                    if run_len == 0:
+                        run_start = i
+                    run_len += 1
+                else:
+                    if run_len >= min_len:
+                        for j in range(run_start, run_start + run_len):
+                            putchar(int(buf[j]))
+                        putchar(0x0A)
+                    run_len = 0
+        return
+
+    fp = fopen(path.c_str(), "r".c_str())
+    if fp == 0:
+        perror("fopen failed".c_str())
+        sys.exit(1)
+
+    buf = mmap(0, BUF_SIZE, 3, 34, -1, 0);
+    while True:
+        n_bytes = read(fileno(fp), buf, BUF_SIZE)
+        if n_bytes <= 0:
+            break
+        run_start = 0
+        run_len = 0
+        for i in range(n_bytes):
+            c = int(buf[i])
+            if c == 0x09 or (c >= 0x20 and c <= 0x7E):
+                if run_len == 0:
+                    run_start = i
+                run_len += 1
+            else:
+                if run_len >= min_len:
+                    for j in range(run_start, run_start + run_len):
+                        putchar(int(buf[j]))
+                    putchar(0x0A)
+                run_len = 0
+
+    if run_len >= min_len:
+        for j in range(run_start, run_start + run_len):
+            putchar(int(buf[j]))
+        putchar(0x0A)
+
+    fclose(fp)
+
+
+def main():
+    min_len, files = parse_args(sys.argv)
+
+    for f in files:
+        process_file(f, min_len)
+
+
+if __name__ == "__main__":
+    main()
